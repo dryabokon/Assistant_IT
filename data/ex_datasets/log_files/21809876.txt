@@ -1,0 +1,10 @@
+<p>I have a collection of measured tree diameters and am trying to plot a histogram with a kernel density estimation superimposed on top in python. The seaborn module lets me do this quite simply but I can find no way of specifying that the kde should be zero for negative numbers (since trees can't have negative tree diameters).</p>
+
+<p>what I've got at present is this:</p>
+
+<pre><code>seaborn.distplot(C77_diam, rug=True, hist=True, kde=True)
+</code></pre>
+
+<p>I've looked at seaborn.kdeplot which is the function that distplot calls but can't find anything useful. Does anyone know if this can be done with seaborn, and if not if it can be done with matplotlib more generally?</p>
+
+<p>I only started using seaborn because i couldn't figure out how to overlay a kde pyplot.plot() with a pyplot.hist().</p>

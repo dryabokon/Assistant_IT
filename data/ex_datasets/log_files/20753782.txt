@@ -1,0 +1,9 @@
+<p>After multiple problems trying to run <a href="http://stanford.edu/~mwaskom/software/seaborn/" rel="noreferrer">stanford.edu/~mwaskom/software/seaborn/</a> in Anaconda and Enthought for Mac (many problems with dependencies and versions), I was able to run it from an Enthought virtual environment in Ubuntu (running on VirtualBox). </p>
+
+<p>Following some of their tutorials I recreated the following:</p>
+
+<p><img src="https://i.stack.imgur.com/GRgWQ.png" alt="enter image description here"></p>
+
+<p>But it bothers me that the fonts in use are not the ones designed for Seaborn, but the closest one.</p>
+
+<p>Does anybody has experience in tweaking the font selection in matplotlib? Any good tutorial on how to use matplotlib's font manager?</p>

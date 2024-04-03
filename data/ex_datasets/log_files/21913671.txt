@@ -1,0 +1,9 @@
+<p>when using <code>seaborn.regplot</code>, the xlabel and ylabel and yticklabels are actually cut off, i.e., not visible. Normall, I'd do</p>
+
+<pre><code>fig = plt.gcf()
+fig.subplots_adjust(left=...)
+</code></pre>
+
+<p>to fix this. However, this doesn't seem to have any impact on the figure.</p>
+
+<p>What am I doing wrong?</p>
