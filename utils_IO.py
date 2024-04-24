@@ -20,7 +20,6 @@ class IO:
         return
 # ----------------------------------------------------------------------------------------------------------------------
     def tokenize_and_upload(self,docs,new_index_name,field_source='description',field_embedding='token'):
-
         docs_e = self.C.tokenize_documents(docs, field_source=field_source, field_embedding=field_embedding)
         if new_index_name not in self.C.get_indices():
             self.C.create_search_index(docs_e,'token',new_index_name)
