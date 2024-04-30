@@ -1,3 +1,4 @@
+from tqdm import tqdm
 import tools_Azure_Search
 import tools_DF
 # ----------------------------------------------------------------------------------------------------------------------
@@ -18,6 +19,13 @@ class IO:
         self.C.upload_documents(docs)
 
         return
+# ----------------------------------------------------------------------------------------------------------------------
+    def tokenize_documents(self, dct_records, field_source, field_embedding):
+
+        for d in tqdm([d for d in dct_records], total=len(dct_records), desc='Tokenizing'):
+            d[field_embedding] = self.get_embedding_huggingface(d[field_source])
+
+        return dct_records
 # ----------------------------------------------------------------------------------------------------------------------
     def tokenize_and_upload(self,docs,new_index_name,field_source='description',field_embedding='token'):
         docs_e = self.C.tokenize_documents(docs, field_source=field_source, field_embedding=field_embedding)
