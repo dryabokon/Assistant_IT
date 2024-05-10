@@ -1,5 +1,4 @@
 # About
-This repo is an example of usage of MS Azure Cognitive Search and Langchain to build AI-agent for assisting in SW engineering.
-The KB is constructed from Stackoverflow data.
+This repo is an example of usage of Vector Search and Langchain to build AI-agent for GCP chat
 
 ![alt text](/data/Image1.jpg)
