@@ -1,91 +1,44 @@
-import json
-import numpy
-import pandas as pd
-import pdf2image
-import uuid
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.document_loaders import PyPDFLoader
-# ----------------------------------------------------------------------------------------------------------------------
-from vertexai.language_models import TextEmbeddingInput
-from vertexai.preview.language_models import TextEmbeddingModel
-# ----------------------------------------------------------------------------------------------------------------------
-import tools_IO
-import utils_IO
-import tools_image
+import os
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+import tools_VertexAI_Search
 import tools_DF
+from LLM2 import llm_interaction
 # ----------------------------------------------------------------------------------------------------------------------
-folder_out = './data/output/'
-index_name_stack_overflow = 'stackoverflow125body'
-IO = utils_IO.IO('gl')
+service_account_file = './secrets/GL/ml-ops-poc-695-331cbd915e34.json'
 # ----------------------------------------------------------------------------------------------------------------------
-model_embeddings = TextEmbeddingModel.from_pretrained("textembedding-gecko@003")
+def send_message_to_chat(room_id, message_text):
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = service_account_file
+    credentials = service_account.Credentials.from_service_account_file(service_account_file, scopes=['https://www.googleapis.com/auth/chat.bot'])
+    service = build('chat', 'v1', credentials=credentials)
+    room_uri = f'https://chat.googleapis.com/v1/spaces/{room_id}/messages'
+    message_body = {'text': message_text}
+    response = service.spaces().messages().create(parent=room_uri, body=message_body).execute()
+    print("Message sent to Google Chat room:", response)
 # ----------------------------------------------------------------------------------------------------------------------
-def remove_stop_worlds(text):
-    for w in ['Conﬁdential','confidential','Conﬁdential','Condential','condential']:
-        text = text.replace(w,'')
-
-    return text
-# ----------------------------------------------------------------------------------------------------------------------
-def pipe_00_pdfs_to_json(folder_in,filename_json,do_embedding=False):
-    def embed_text(texts):return [embedding.values for embedding in model_embeddings.get_embeddings([TextEmbeddingInput(text, "RETRIEVAL_DOCUMEN") for text in texts])]
-
-    filenames_pdf = tools_IO.get_filenames(folder_in,list_of_masks='*.pdf')
-    chunk_size = 1000
-    df_pages_chunked = pd.DataFrame()
-    for filename_pdf in filenames_pdf:
-        imgs_pages = pdf2image.convert_from_path(folder_in + filename_pdf)
-        imgs_pages = [tools_image.smart_resize(numpy.array(im), target_image_height=200) for im in imgs_pages]
-        base64b = [tools_image.encode_base64(im) for im in imgs_pages]
-        base64s = [str(b)[2:-1] for b in base64b]
-
-        docs_pages = PyPDFLoader(folder_in + filename_pdf).load_and_split()
-        texts_pages = [text.page_content for text in docs_pages]
-        texts_pages = [s.encode("ascii", "ignore").decode() for s in texts_pages]
-        texts_pages = [remove_stop_worlds(t) for t in texts_pages]
-        df_pages = pd.DataFrame({'doc_id':filename_pdf.split('.')[0],'page_num':[str(i) for i in range(len(texts_pages))],'text':texts_pages,'len':[len(t) for t in texts_pages],'base64':base64s})
-
-        idx = df_pages['len'] < chunk_size
-        df_pages_chunked = pd.concat([df_pages_chunked,pd.concat([df_pages.loc[idx,:]])])
-        for i in numpy.where(~idx)[0]:
-            txts = RecursiveCharacterTextSplitter(separators=["\n\n", "\n"], chunk_size=chunk_size,chunk_overlap=100).create_documents([df_pages.loc[i, 'text']])
-            df = pd.DataFrame({'doc_id':df_pages['doc_id'].iloc[i],'page_num':df_pages['page_num'].loc[i],'text':[t.page_content for t in txts],'len':[len(t.page_content) for t in txts],'base64':df_pages['base64'].loc[i]})
-            df_pages_chunked = pd.concat([df_pages_chunked,df])
-
-    df_pages_chunked = df_pages_chunked.drop(columns=['len'])
-    df_pages_chunked = tools_DF.add_column(df_pages_chunked, 'uuid', [uuid.uuid4().hex for i in range(df_pages_chunked.shape[0])])
-
-    if do_embedding:
-        df_pages_chunked['embedding'] = embed_text(df_pages_chunked['text'])
-
-    with open(filename_json,'w',encoding='utf-8') as f:
-            json.dump(df_pages_chunked.to_dict(orient='records'), f,indent='\t')
-
+def run():
+    Vector_Searcher.table_name = 'GL_catalog'
+    df = Vector_Searcher.search_vector('Who are the leaders in GL?', select=['text', 'filename', 'url','score'], as_df=True,limit=4)
+    if df.shape[0] ==0:return 'No results found'
+    df = df[df['score']>0.75]
+    if df.shape[0] ==0:return 'No relevant results found'
+    df = df.sort_values(by='score', ascending=False)
+    df['url'] = df['url'].apply(lambda x: Vector_Searcher.generate_signed_url(x, duration_sec=300))
+    df['text'] = df['text'].apply(lambda x: Vector_Searcher.summarize(x))
+    print(tools_DF.prettify(df, showindex=False))
     return
 # ----------------------------------------------------------------------------------------------------------------------
-def pipe_01_import_KB(filename,index_name,field_source):
-    dct_data = json.load(open(filename, encoding="utf-8"))
-    IO.tokenize_and_upload(dct_data, index_name, field_source=field_source)
-    return
-# ----------------------------------------------------------------------------------------------------------------------
-def pipe_02_search(query,index_name,select=['question_id','question_title']):
-    IO.search(query,index_name,select=select)
-    return
-# ----------------------------------------------------------------------------------------------------------------------
+
 if __name__ == '__main__':
 
-    pass
+    Vector_Searcher = tools_VertexAI_Search.VertexAI_Search('./secrets/GL/private_config_GCP.yaml','./secrets/GL/ml-ops-poc-695-331cbd915e34.json')
+    # Vector_Searcher.cleanup_bucket(Vector_Searcher.bucket_name)
+    # Vector_Searcher.add_book(table_name='GL_catalog',filename_in='./data/ex_datasets/pdf_GL/1B7mlWgckxEwVfXb_43m6Ci51I87gBkk_Kzjgj273Ef4.pdf')
+    # Vector_Searcher.add_book(table_name='GL_catalog',filename_in='./data/ex_datasets/pdf_GL/1SYSoYgeuhGaG-ZVgOT7x-AJFPNyMyk64BzUglKaUFpw.pdf')
 
-    #pipe_00_pdfs_to_json('./data/ex_datasets/pdf_GL/',filename_json='./data/ex_datasets/GL_ML.json',do_embedding=False)
-    #pipe_00_pdfs_to_json('./data/ex_datasets/pdf_files_manuals/Q5/',filename_json='./data/ex_datasets/Q5.json')
-    #pipe_00_pdfs_to_json('./data/ex_datasets/pdf_books/',filename_json='./data/ex_datasets/GF.json')
-    #pipe_01_import_KB(filename='./data/ex_datasets/stackoverflow.json', field_source='question_body')
-    #pipe_01_import_KB(filename='./data/ex_datasets/Q5.json', index_name='q5',field_source='text')
+    #Vector_Searcher_GCP.add_book(table_name='Godfather',filename_in='./data/ex_datasets/pdf_books/Godfather.pdf',chunk_size=2000)
 
-    # IO.drop_index('gl')
-    # pipe_01_import_KB(filename='./data/ex_datasets/GL_ML.json', index_name='gl',field_source='text')
+    #send_message_to_chat('YOUR_ROOM_ID', 'Hello, this is a test message!')
+    #print(Vector_Searcher_GCP.generate_signed_url('gs://gl_catalog2/839a486d-dc60-477f-95f5-fc71eb9ebb85.png'))
 
-    #pipe_02_search('How to plot stacked bar if number of columns is not known?',index_name=index_name_stack_overflow,select = ['question_id','question_title'])
-    #pipe_02_search('What are business verticals?',index_name='gl',select = ['text'])
-
-
-
+    run()

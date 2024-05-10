@@ -2,12 +2,14 @@ import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning, module='langchain')
 import os
 import yaml
-import openai
 from langchain.chat_models import ChatOpenAI,AzureChatOpenAI
 from langchain.llms import OpenAI, AzureOpenAI
+from langchain_google_vertexai import VertexAI
 # ----------------------------------------------------------------------------------------------------------------------
 def get_model(filename_config_model, model_type='QA'):
-    with open(filename_config_model, 'r') as config_file:
+
+
+    with open(filename_config_model) as config_file:
         config = yaml.safe_load(config_file)
         if 'openai' in config:
             #engine = "gpt-3.5-turbo"
@@ -24,12 +26,17 @@ def get_model(filename_config_model, model_type='QA'):
             print(f'OpenAI {model.model_name} initialized')
 
         elif 'azure' in config:
+            import openai
             os.environ["OPENAI_API_TYPE"] = "azure"
             os.environ["OPENAI_API_VERSION"] = "2023-05-15"
             os.environ["OPENAI_API_BASE"] = config['azure']['openai_api_base']
             os.environ["OPENAI_API_KEY"] = config['azure']['openai_api_key']
             openai.api_key = config['azure']['openai_api_key']
 
+            openai.api_type = "azure"
+            openai.api_version = "2022-12-01"
+            openai.api_base = os.getenv('OPENAI_API_BASE')
+            openai.api_key = os.getenv("OPENAI_API_KEY")
 
             if model_type== 'QA' :
                 model = AzureChatOpenAI(deployment_name=config['azure']['deployment_name'])
@@ -37,6 +44,10 @@ def get_model(filename_config_model, model_type='QA'):
                 model = AzureOpenAI(deployment_name=config['azure']['deployment_name'])
 
             print(f'Azure {model.model_name} initialized')
+        elif 'GCP' in config:
+            model = VertexAI(model_name="gemini-pro")
+            #model = ChatGoogleGenerativeAI(model="gemini-pro",google_api_key=config['GCP']['google_api_key'])
+            print(f'GCP {model.model_name} initialized')
 
         return model
 # ----------------------------------------------------------------------------------------------------------------------
